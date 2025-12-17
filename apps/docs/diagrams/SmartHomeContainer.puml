@@ -1,0 +1,30 @@
+@startuml SmartHomeContainer
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+title Container diagram
+
+Person(user, "User", "Использует Теплый дом")
+System_Boundary(sensor_management_domain, "Система управления Тёплый дом") {
+    Container(mobile_app, "Мобильное приложение", "Flutter")
+    Container(web_app, "Веб-приложение", "Nuxt.js")
+    Container(service_scenario, "Сервис управления сценариями устройств", "Python", "")
+    Container(service_device, "Сервис управления устройствами", "Python", "")
+    Container(service_monitoring, "Сервис мониторинга устройств", "Python", "")
+    Container(load_balancer, "Балансировщик нагрузки", "NGINX/PROXY", "")
+    Container(load_balancer_db, "Балансировщик нагрузки базы данных", "PgBouncer", "")
+    ContainerDb(database, "База данных", "Postgresql")
+    
+}
+System_Ext(system__device_external, "Сервис данных об устройствах", "Сервис для получения данных об устройствах")
+
+Rel(user, mobile_app, "Просматривает температуру и управляет отоплением")
+Rel(user, web_app, "Просматривает температуру и управляет отоплением")
+Rel(web_app, load_balancer, "Просматривает температуру", "JSON/HTTPS")
+Rel(mobile_app, load_balancer, "Просматривает температуру", "JSON/HTTPS")
+Rel(service_monitoring, system__device_external, "Получает данные о температуре", "JSON/HTTPS")
+Rel(load_balancer_db, database, "Управление подключениями к бд")
+Rel(load_balancer, service_scenario, "Балансирование нагрузки", "JSON/HTTPS")
+Rel(load_balancer, service_device, "Балансирование нагрузки", "JSON/HTTPS")
+Rel(load_balancer, service_monitoring, "Балансирование нагрузки", "JSON/HTTPS")
+Rel(service_scenario, load_balancer_db, "Получение данных о сценариях", "SQL/TCP")
+Rel(service_device, load_balancer_db, "Получение данных об устройствах", "SQL/TCP")
+Rel(service_monitoring, load_balancer_db, "Получение данных мониторинга", "SQL/TCP")

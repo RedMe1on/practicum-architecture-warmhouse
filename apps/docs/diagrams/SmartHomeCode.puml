@@ -1,0 +1,501 @@
+@startuml
+title Class Diagram: Service Device Management (Python)
+
+package "API Layer" {
+    class DeviceAPIController <<FastAPI Controller>> {
+        - device_connect_service: DeviceConnectService
+        - device_state_service: DeviceStateService
+        - device_command_service: DeviceCommandService
+        
+        + __init__(connect_service, state_service, command_service)
+        + get_devices(skip: int = 0, limit: int = 100) -> List[DeviceResponse]
+        + get_device(device_id: UUID) -> DeviceResponse
+        + create_device(device_data: CreateDeviceRequest) -> DeviceResponse
+        + update_device(device_id: UUID, update_data: UpdateDeviceRequest) -> DeviceResponse
+        + delete_device(device_id: UUID) -> Dict[str, bool]
+        + connect_device(device_id: UUID, connection_data: ConnectRequest) -> ConnectionResponse
+        + disconnect_device(device_id: UUID) -> Dict[str, bool]
+        + get_device_state(device_id: UUID) -> DeviceStateResponse
+        + update_device_state(device_id: UUID, state_data: UpdateStateRequest) -> DeviceStateResponse
+        + send_command(device_id: UUID, command_data: DeviceCommand) -> CommandResponse
+        + execute_scene(scene_id: UUID) -> SceneExecutionResponse
+    }
+    
+    class CreateDeviceRequest <<Pydantic Model>> {
+        name: str
+        device_type: DeviceType
+        location: str
+        model: str
+        manufacturer: str
+        protocol: ConnectionProtocol
+        connection_params: Dict[str, Any]
+    }
+    
+    class ConnectRequest <<Pydantic Model>> {
+        host: str
+        port: int
+        credentials: DeviceCredentials
+        timeout: int = 30
+    }
+    
+    class UpdateStateRequest <<Pydantic Model>> {
+        state: Dict[str, Any]
+        metadata: Dict[str, str] = {}
+    }
+    
+    class DeviceCommand <<Pydantic Model>> {
+        command: str
+        parameters: Dict[str, Any]
+        priority: CommandPriority = CommandPriority.NORMAL
+    }
+    
+    class DeviceResponse <<Pydantic Model>> {
+        id: UUID
+        name: str
+        device_type: DeviceType
+        location: str
+        model: str
+        manufacturer: str
+        status: DeviceStatus
+        connection_status: ConnectionStatus
+        created_at: datetime
+        updated_at: datetime
+    }
+    
+    class ConnectionResponse <<Pydantic Model>> {
+        device_id: UUID
+        status: ConnectionStatus
+        connected_at: datetime
+        connection_id: Optional[str]
+        message: str
+    }
+    
+    class DeviceStateResponse <<Pydantic Model>> {
+        device_id: UUID
+        state: Dict[str, Any]
+        last_updated: datetime
+        is_online: bool
+        metrics: Dict[str, float]
+    }
+    
+    class CommandResponse <<Pydantic Model>> {
+        command_id: UUID
+        device_id: UUID
+        command: str
+        status: CommandStatus
+        result: Optional[Dict[str, Any]]
+        executed_at: datetime
+        execution_time_ms: float
+    }
+}
+
+package "Service Layer" {
+    abstract class DeviceService <<ABC>> {
+        + get_all_devices() -> List[Device]
+        + get_device_by_id(device_id: UUID) -> Device
+        + create_device(device_data: CreateDeviceData) -> Device
+        + update_device(device_id: UUID, update_data: UpdateDeviceData) -> Device
+        + delete_device(device_id: UUID) -> bool
+        + search_devices(query: DeviceSearchQuery) -> List[Device]
+    }
+    
+    class DeviceServiceImpl <<Service>> {
+        - device_repository: DeviceRepository
+        - device_connect_service: DeviceConnectService
+        - event_publisher: EventPublisher
+        
+        + __init__(repo, connect_service, event_pub)
+        + get_all_devices() -> List[Device]
+        + get_device_by_id(device_id: UUID) -> Device
+        + create_device(device_data: CreateDeviceData) -> Device
+        + update_device(device_id: UUID, update_data: UpdateDeviceData) -> Device
+        + delete_device(device_id: UUID) -> bool
+        + search_devices(query: DeviceSearchQuery) -> List[Device]
+        
+        - _validate_device_data(data: CreateDeviceData) -> None
+        - _publish_device_event(device: Device, event_type: DeviceEventType) -> None
+    }
+    
+    abstract class DeviceConnectService <<ABC>> {
+        + connect(device_id: UUID, connection_params: ConnectionParams) -> DeviceConnection
+        + disconnect(device_id: UUID) -> bool
+        + test_connection(connection_params: ConnectionParams) -> bool
+        + get_connection_status(device_id: UUID) -> ConnectionStatus
+        + reconnect(device_id: UUID) -> DeviceConnection
+    }
+    
+    class DeviceConnectServiceImpl <<Service>> {
+        - protocol_handlers: Dict[ConnectionProtocol, ProtocolHandler]
+        - connection_registry: ConnectionRegistry
+        - device_repository: DeviceRepository
+        - device_state_service: DeviceStateService
+        - device_command_service: DeviceCommandService
+        
+        + __init__(protocol_handlers, registry, repo, state_service, command_service)
+        + connect(device_id: UUID, connection_params: ConnectionParams) -> DeviceConnection
+        + disconnect(device_id: UUID) -> bool
+        + test_connection(connection_params: ConnectionParams) -> bool
+        + get_connection_status(device_id: UUID) -> ConnectionStatus
+        + reconnect(device_id: UUID) -> DeviceConnection
+        
+        - _get_protocol_handler(protocol: ConnectionProtocol) -> ProtocolHandler
+        - _create_connection(device: Device, params: ConnectionParams) -> DeviceConnection
+        - _validate_connection_params(params: ConnectionParams) -> None
+        - _initialize_device_on_connect(device: Device, connection: DeviceConnection) -> None
+    }
+    
+    abstract class DeviceStateService <<ABC>> {
+        + get_state(device_id: UUID) -> DeviceState
+        + update_state(device_id: UUID, state_data: Dict[str, Any]) -> DeviceState
+        + subscribe_to_state_changes(device_id: UUID, callback: Callable) -> str
+        + unsubscribe_from_state_changes(subscription_id: str) -> bool
+        + get_state_history(device_id: UUID, hours: int = 24) -> List[DeviceStateSnapshot]
+    }
+    
+    class DeviceStateServiceImpl <<Service>> {
+        - state_repository: DeviceStateRepository
+        - device_repository: DeviceRepository
+        - cache: RedisCache
+        
+        + __init__(state_repo, device_repo, cache)
+        + get_state(device_id: UUID) -> DeviceState
+        + update_state(device_id: UUID, state_data: Dict[str, Any]) -> DeviceState
+        + subscribe_to_state_changes(device_id: UUID, callback: Callable) -> str
+        + unsubscribe_from_state_changes(subscription_id: str) -> bool
+        + get_state_history(device_id: UUID, hours: int = 24) -> List[DeviceStateSnapshot]
+        
+        - _validate_state_data(device: Device, state_data: Dict[str, Any]) -> None
+        - _cache_state(device_id: UUID, state: DeviceState) -> None
+        - _notify_subscribers(device_id: UUID, new_state: DeviceState) -> None
+    }
+    
+    abstract class DeviceCommandService <<ABC>> {
+        + send_command(device_id: UUID, command: DeviceCommand) -> CommandResult
+        + execute_commands(commands: List[DeviceCommand]) -> List[CommandResult]
+        + get_command_status(command_id: UUID) -> CommandStatus
+        + cancel_command(command_id: UUID) -> bool
+        + get_command_history(device_id: UUID, limit: int = 100) -> List[CommandResult]
+    }
+    
+    class DeviceCommandServiceImpl <<Service>> {
+        - command_queue: CommandQueue
+        - device_repository: DeviceRepository
+        - device_connect_service: DeviceConnectService
+        - command_executor: CommandExecutor
+        
+        + __init__(queue, repo, connect_service, executor)
+        + send_command(device_id: UUID, command: DeviceCommand) -> CommandResult
+        + execute_commands(commands: List[DeviceCommand]) -> List[CommandResult]
+        + get_command_status(command_id: UUID) -> CommandStatus
+        + cancel_command(command_id: UUID) -> bool
+        + get_command_history(device_id: UUID, limit: int = 100) -> List[CommandResult]
+        
+        - _validate_command(device: Device, command: DeviceCommand) -> None
+        - _execute_single_command(device: Device, command: DeviceCommand) -> CommandResult
+        - _handle_command_error(device_id: UUID, command: DeviceCommand, error: Exception) -> CommandResult
+    }
+}
+
+package "Domain Models" {
+    class Device <<Entity>> {
+        id: UUID
+        name: str
+        device_type: DeviceType
+        location: str
+        model: str
+        manufacturer: str
+        protocol: ConnectionProtocol
+        connection_params: Dict[str, Any]
+        status: DeviceStatus
+        created_at: datetime
+        updated_at: datetime
+        
+        + __init__(name, device_type, location, model, manufacturer, protocol)
+        + update_connection_params(params: Dict[str, Any]) -> None
+        + change_status(new_status: DeviceStatus) -> None
+        + is_connectable() -> bool
+        + get_connection_info() -> Dict[str, Any]
+    }
+    
+    enum DeviceType <<Enum>> {
+        LIGHT
+        THERMOSTAT
+        SWITCH
+        SENSOR
+        CAMERA
+        LOCK
+        SPEAKER
+        OTHER
+    }
+    
+    enum ConnectionProtocol <<Enum>> {
+        MQTT
+        HTTP
+        WEBSOCKET
+        ZIGBEE
+        ZWAVE
+        BLUETOOTH
+        MODBUS
+    }
+    
+    enum DeviceStatus <<Enum>> {
+        ONLINE
+        OFFLINE
+        ERROR
+        UPDATING
+        MAINTENANCE
+    }
+    
+    enum ConnectionStatus <<Enum>> {
+        CONNECTED
+        DISCONNECTED
+        CONNECTING
+        ERROR
+        TIMEOUT
+    }
+    
+    enum CommandPriority <<Enum>> {
+        LOW
+        NORMAL
+        HIGH
+        CRITICAL
+    }
+    
+    enum CommandStatus <<Enum>> {
+        PENDING
+        EXECUTING
+        COMPLETED
+        FAILED
+        CANCELLED
+        TIMEOUT
+    }
+    
+    class DeviceConnection <<Value Object>> {
+        device_id: UUID
+        connection_id: str
+        protocol: ConnectionProtocol
+        host: str
+        port: int
+        connected_at: datetime
+        last_activity: datetime
+        status: ConnectionStatus
+        
+        + __init__(device_id, connection_id, protocol, host, port)
+        + update_status(new_status: ConnectionStatus) -> None
+        + update_activity() -> None
+        + is_active() -> bool
+    }
+    
+    class DeviceState <<Value Object>> {
+        device_id: UUID
+        state: Dict[str, Any]
+        timestamp: datetime
+        metadata: Dict[str, str]
+        
+        + __init__(device_id, state, timestamp, metadata)
+        + get_value(key: str, default: Any = None) -> Any
+        + set_value(key: str, value: Any) -> None
+        + to_dict() -> Dict[str, Any]
+    }
+    
+    class DeviceCredentials <<Value Object>> {
+        username: Optional[str]
+        password: Optional[str]
+        token: Optional[str]
+        api_key: Optional[str]
+        
+        + __init__(username=None, password=None, token=None, api_key=None)
+        + is_valid() -> bool
+        + get_auth_header() -> Dict[str, str]
+    }
+}
+
+package "Repository Layer" {
+    abstract class DeviceRepository <<ABC>> {
+        + get_all() -> List[Device]
+        + get_by_id(device_id: UUID) -> Optional[Device]
+        + create(device: Device) -> Device
+        + update(device: Device) -> Device
+        + delete(device_id: UUID) -> bool
+        + find_by_criteria(criteria: DeviceCriteria) -> List[Device]
+        + count_by_status(status: DeviceStatus) -> int
+    }
+    
+    class SQLAlchemyDeviceRepository <<Repository>> {
+        - session: Session
+        
+        + __init__(session)
+        + get_all() -> List[Device]
+        + get_by_id(device_id: UUID) -> Optional[Device]
+        + create(device: Device) -> Device
+        + update(device: Device) -> Device
+        + delete(device_id: UUID) -> bool
+        + find_by_criteria(criteria: DeviceCriteria) -> List[Device]
+        + count_by_status(status: DeviceStatus) -> int
+        
+        - _to_entity(model: DeviceModel) -> Device
+        - _to_model(entity: Device) -> DeviceModel
+    }
+    
+    abstract class DeviceStateRepository <<ABC>> {
+        + save_state(state: DeviceState) -> DeviceState
+        + get_current_state(device_id: UUID) -> Optional[DeviceState]
+        + get_state_history(device_id: UUID, start_time: datetime, end_time: datetime) -> List[DeviceState]
+        + delete_old_states(before_time: datetime) -> int
+    }
+    
+    class TimescaleDBStateRepository <<Repository>> {
+        - session: Session
+        
+        + __init__(session)
+        + save_state(state: DeviceState) -> DeviceState
+        + get_current_state(device_id: UUID) -> Optional[DeviceState]
+        + get_state_history(device_id: UUID, start_time: datetime, end_time: datetime) -> List[DeviceState]
+        + delete_old_states(before_time: datetime) -> int
+    }
+}
+
+package "Infrastructure Layer" {
+    class ProtocolHandler <<ABC>> {
+        + connect(params: ConnectionParams) -> Connection
+        + disconnect(connection: Connection) -> bool
+        + send_command(connection: Connection, command: str, params: Dict[str, Any]) -> Dict[str, Any]
+        + get_state(connection: Connection) -> Dict[str, Any]
+        + is_connected(connection: Connection) -> bool
+    }
+    
+    class MQTTHandler <<Protocol Handler>> {
+        - client: mqtt.Client
+        - broker_url: str
+        
+        + __init__(broker_url)
+        + connect(params: ConnectionParams) -> MQTTConnection
+        + disconnect(connection: MQTTConnection) -> bool
+        + send_command(connection: MQTTConnection, command: str, params: Dict[str, Any]) -> Dict[str, Any]
+        + get_state(connection: MQTTConnection) -> Dict[str, Any]
+        + is_connected(connection: MQTTConnection) -> bool
+        
+        - _on_connect(client, userdata, flags, rc) -> None
+        - _on_message(client, userdata, msg) -> None
+    }
+    
+    class HTTPHandler <<Protocol Handler>> {
+        - session: aiohttp.ClientSession
+        
+        + __init__(session)
+        + connect(params: ConnectionParams) -> HTTPConnection
+        + disconnect(connection: HTTPConnection) -> bool
+        + send_command(connection: HTTPConnection, command: str, params: Dict[str, Any]) -> Dict[str, Any]
+        + get_state(connection: HTTPConnection) -> Dict[str, Any]
+        + is_connected(connection: HTTPConnection) -> bool
+        
+        - _make_request(method: str, url: str, data: Optional[Dict] = None) -> Dict[str, Any]
+    }
+    
+    class CommandQueue <<Queue>> {
+        - queue: asyncio.Queue
+        - workers: List[CommandWorker]
+        
+        + __init__(max_size: int = 1000)
+        + put(command: QueuedCommand) -> bool
+        + get() -> Optional[QueuedCommand]
+        + size() -> int
+        + empty() -> bool
+        + start_workers(num_workers: int) -> None
+        + stop_workers() -> None
+    }
+    
+    class CommandExecutor <<Executor>> {
+        - protocol_handlers: Dict[ConnectionProtocol, ProtocolHandler]
+        
+        + __init__(protocol_handlers)
+        + execute_command(device: Device, command: DeviceCommand) -> CommandResult
+        + execute_commands_parallel(commands: List[Tuple[Device, DeviceCommand]]) -> List[CommandResult]
+        
+        - _get_handler_for_device(device: Device) -> ProtocolHandler
+        - _validate_command_result(result: Dict[str, Any]) -> CommandResult
+    }
+}
+
+
+' API -> Сервис подключения устройств
+DeviceAPIController --> DeviceConnectServiceImpl : "Подключение устройства"
+note on link: JSON/HTTPS\n"/api/devices/{id}/connect"
+
+' API -> Сервис состояния устройств
+DeviceAPIController --> DeviceStateServiceImpl : "Проверка состояния"
+note on link: JSON/HTTPS\n"/api/devices/{id}/state"
+
+' API -> Сервис обработки команд
+DeviceAPIController --> DeviceCommandServiceImpl : "Управление устройствами"
+note on link: JSON/HTTPS\n"/api/devices/{id}/command"
+
+' Сервис подключения -> Сервис состояния
+DeviceConnectServiceImpl --> DeviceStateServiceImpl : "Проверка состояния при подключении"
+note on link: JSON/HTTPS\nInternal call
+
+' Сервис подключения -> Сервис обработки команд
+DeviceConnectServiceImpl --> DeviceCommandServiceImpl : "Отправка команд для подключения устройства"
+note on link: JSON/HTTPS\nInitialization commands
+
+' Дополнительные связи в системе
+DeviceServiceImpl --> DeviceConnectServiceImpl : uses
+DeviceConnectServiceImpl --> ProtocolHandler : uses
+DeviceStateServiceImpl --> SQLAlchemyDeviceRepository : uses
+DeviceCommandServiceImpl --> CommandQueue : uses
+
+' Протоколы связи
+MQTTHandler ..|> ProtocolHandler : implements
+HTTPHandler ..|> ProtocolHandler : implements
+
+' Репозитории
+SQLAlchemyDeviceRepository ..|> DeviceRepository : implements
+TimescaleDBStateRepository ..|> DeviceStateRepository : implements
+
+' Сервисы
+DeviceServiceImpl ..|> DeviceService : implements
+DeviceConnectServiceImpl ..|> DeviceConnectService : implements
+DeviceStateServiceImpl ..|> DeviceStateService : implements
+DeviceCommandServiceImpl ..|> DeviceCommandService : implements
+
+package "Dependency Injection" {
+    class ServiceContainer {
+        - config: AppConfig
+        - db_session: Session
+        - redis_client: Redis
+        - http_session: aiohttp.ClientSession
+        
+        + __init__(config)
+        + get_device_controller() -> DeviceAPIController
+        + get_device_service() -> DeviceService
+        + get_connect_service() -> DeviceConnectService
+        + get_state_service() -> DeviceStateService
+        + get_command_service() -> DeviceCommandService
+        + get_device_repository() -> DeviceRepository
+        + get_state_repository() -> DeviceStateRepository
+        
+        - _setup_protocol_handlers() -> Dict[ConnectionProtocol, ProtocolHandler]
+        - _setup_command_queue() -> CommandQueue
+        - _setup_event_publisher() -> EventPublisher
+    }
+    
+    class AppConfig <<Pydantic Settings>> {
+        database_url: str
+        redis_url: str
+        mqtt_broker_url: str
+        http_timeout: int = 30
+        command_queue_size: int = 1000
+        state_cache_ttl: int = 300
+        
+        + from_env() -> AppConfig
+    }
+}
+
+ServiceContainer --> DeviceAPIController : creates
+ServiceContainer --> DeviceConnectServiceImpl : creates
+ServiceContainer --> DeviceStateServiceImpl : creates
+ServiceContainer --> DeviceCommandServiceImpl : creates
+ServiceContainer --> MQTTHandler : creates
+ServiceContainer --> HTTPHandler : creates
+
+@enduml

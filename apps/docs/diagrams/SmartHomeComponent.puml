@@ -1,0 +1,39 @@
+@startuml SmartHomeComponent
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+title Component diagram
+
+Container_Boundary(service_scenario, "Сервис управления сценариями устройств", "Python", "") {
+    Component(service_scenario_api, "API управления сценариями", "REST Controller")
+    Component(service_scenario_execute, "Сервис исполнения сценариев")
+    Component(service_scenario_handle, "Сервис управления сценариями", "Python")
+}
+Container_Boundary(service_device, "Сервис управления устройствами", "Python", "") {
+    Component(service_device_api, "API сервиса управления устройствами", "REST Controller")
+    Component(service_device_connect, "Сервис подключения устройств", "HTTP")
+    Component(service_device_state, "Сервис состояния устройств", "HTTP")
+    Component(service_device_handle, "Сервис обработки команд", "HTTP")
+
+}
+Container_Boundary(service_monitoring, "Сервис мониторинга устройств", "Python", "") {
+    Component(service_monitoring_api, "API сервиса мониторинга", "REST Controller")
+    Component(service_monitoring_tele, "Сервис телеметрии", "HTTP", "Функционал сбора данных")
+    Component(service_monitoring_event, "Сервис настройки событий", "HTTP", "Функционал настройки событий для нотификации по ивентам")
+    Component(service_monitoring_alert, "Сервис управления алертов", "SQL/HTTP", "Функционал управления алертами и их разрешением после наступления события")
+    Component(service_monitoring_ntfy, "Сервис нотификации", "SMTP/PUSH", "Функционал отправки уведомлений")
+
+}
+
+Rel(service_device_api, service_device_connect, "Подключение устройства", "JSON/HTTPS")
+Rel(service_device_api, service_device_state, "Проверка состояния", "JSON/HTTPS")
+Rel(service_device_connect, service_device_state, "Проверка состояния при подключении", "JSON/HTTPS")
+Rel(service_device_api, service_device_handle, "Управление устройствами", "JSON/HTTPS")
+Rel(service_device_connect, service_device_handle, "Отправка команд для подключения устройства", "JSON/HTTPS")
+
+Rel(service_scenario_api, service_scenario_execute, "Исполнение сценария", "JSON/HTTPS")
+Rel(service_scenario_api, service_scenario_handle, "CRUD сценариев и бизнес-логика", "JSON/HTTPS")
+
+Rel(service_monitoring_api, service_monitoring_tele, "Подключение устройства", "JSON/HTTPS")
+Rel(service_monitoring_api, service_monitoring_event, "Проверка состояния", "JSON/HTTPS")
+Rel(service_monitoring_api, service_monitoring_alert, "Проверка состояния при подключении", "JSON/HTTPS")
+Rel(service_monitoring_event, service_monitoring_ntfy, "Управление устройствами", "JSON/HTTPS")
+Rel(service_monitoring_alert, service_monitoring_ntfy, "Отправка команд для подключения устройства", "JSON/HTTPS")

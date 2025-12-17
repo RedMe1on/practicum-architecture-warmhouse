@@ -1,0 +1,27 @@
+@startuml SmartHomeContext
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+title Context diagram
+
+Person(user, "User", "Управляет отоплением")
+Person(admin, "Admin", "Специалист по подключению устройств")
+System_Boundary(sensor_management_domain, "Домен управления устройствами") {
+    System_Boundary(heating_control_subdomain, "Поддомен управление устройствами") {
+        System(device, "Управление подключенными устройствами", "Принимает и обрабатывает показания\nустройств")
+    }
+    System_Boundary(heating_control_subdomain, "Поддомен подключения устройств") {
+        System(add_device, "Подключения устройств", "Подключения устройств по стандартным протоколам")
+    }
+}
+
+System_Boundary(sensor_monitoring_domain, "Домен мониторинга устройств") {
+    System(monitoring_device, "Отслеживания данных и метрик устройств", "Поддомен")
+    System(monitoring_report, "Отчетность и аналитика", "Поддомен")
+}
+System_Ext(temperature_system_external, "Сервис данных об устройствах", "Сервис для получения данных об устройствах")
+
+Rel(monitoring_report, monitoring_device, "Запрашивает данные с устройств")
+Rel(user, monitoring_report, "Просматривает метрики и данные", "HTTPS/REST")
+Rel(admin, add_device, "Добавляет устройство", "HTTPS/REST")
+Rel(user, device, "Настраивает/Просматривает параметры устройств", "HTTPS/REST")
+Rel(monitoring_device, temperature_system_external, "Получает данные об устройствах", "HTTPS/REST")
+@enduml

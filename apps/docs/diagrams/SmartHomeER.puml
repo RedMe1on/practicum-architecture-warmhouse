@@ -1,0 +1,404 @@
+@startuml
+' Установка нотации для ER-диаграммы
+hide circle
+skinparam linetype ortho
+
+title ER Diagram: Smart Home Device Management System
+
+entity "users" as users {
+  * id : UUID <<PK>>
+  --
+  email : VARCHAR(255) <<UNIQUE>>
+  username : VARCHAR(100) <<UNIQUE>>
+  password_hash : VARCHAR(255)
+  first_name : VARCHAR(100)
+  last_name : VARCHAR(100)
+  phone_number : VARCHAR(20)
+  is_active : BOOLEAN
+  last_login_at : TIMESTAMP
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "homes" as homes {
+  * id : UUID <<PK>>
+  --
+  name : VARCHAR(255)
+  address : VARCHAR(500)
+  city : VARCHAR(100)
+  country : VARCHAR(100)
+  timezone : VARCHAR(50)
+  is_active : BOOLEAN
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "user_homes" as user_homes {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  * home_id : UUID <<FK>>
+  role : VARCHAR(50)
+  is_owner : BOOLEAN
+  invited_by : UUID <<FK>>
+  invitation_token : VARCHAR(255)
+  invitation_expires_at : TIMESTAMP
+  joined_at : TIMESTAMP
+  created_at : TIMESTAMP
+}
+
+entity "device_categories" as device_categories {
+  * id : UUID <<PK>>
+  --
+  name : VARCHAR(100) <<UNIQUE>>
+  description : TEXT
+  icon : VARCHAR(100)
+  created_at : TIMESTAMP
+}
+
+entity "device_types" as device_types {
+  * id : UUID <<PK>>
+  --
+  * category_id : UUID <<FK>>
+  name : VARCHAR(100)
+  model : VARCHAR(100)
+  manufacturer : VARCHAR(100)
+  description : TEXT
+  protocol : VARCHAR(50)
+  capabilities : JSONB
+  created_at : TIMESTAMP
+}
+
+entity "devices" as devices {
+  * id : UUID <<PK>>
+  --
+  * home_id : UUID <<FK>>
+  * device_type_id : UUID <<FK>>
+  name : VARCHAR(255)
+  unique_id : VARCHAR(255) <<UNIQUE>>
+  location : VARCHAR(255)
+  room : VARCHAR(100)
+  firmware_version : VARCHAR(50)
+  ip_address : VARCHAR(45)
+  mac_address : VARCHAR(17)
+  serial_number : VARCHAR(100)
+  status : VARCHAR(20)
+  is_online : BOOLEAN
+  last_seen_at : TIMESTAMP
+  metadata : JSONB
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "device_connections" as device_connections {
+  * id : UUID <<PK>>
+  --
+  * device_id : UUID <<FK>>
+  protocol : VARCHAR(50)
+  host : VARCHAR(255)
+  port : INTEGER
+  username : VARCHAR(255)
+  password_encrypted : VARCHAR(255)
+  connection_status : VARCHAR(20)
+  connected_at : TIMESTAMP
+  disconnected_at : TIMESTAMP
+  last_activity_at : TIMESTAMP
+  connection_metadata : JSONB
+}
+
+entity "device_states" as device_states {
+  * id : UUID <<PK>>
+  --
+  * device_id : UUID <<FK>>
+  state_data : JSONB
+  source : VARCHAR(50)
+  is_current : BOOLEAN
+  recorded_at : TIMESTAMP
+  created_at : TIMESTAMP
+}
+
+entity "device_state_history" as device_state_history {
+  * id : BIGSERIAL <<PK>>
+  --
+  * device_id : UUID <<FK>>
+  state_data : JSONB
+  recorded_at : TIMESTAMP
+  created_at : TIMESTAMP
+}
+
+entity "device_metrics" as device_metrics {
+  * id : BIGSERIAL <<PK>>
+  --
+  * device_id : UUID <<FK>>
+  metric_name : VARCHAR(100)
+  metric_value : DECIMAL(10,4)
+  unit : VARCHAR(20)
+  recorded_at : TIMESTAMP
+}
+
+entity "device_commands" as device_commands {
+  * id : UUID <<PK>>
+  --
+  * device_id : UUID <<FK>>
+  * user_id : UUID <<FK>>
+  command_type : VARCHAR(100)
+  command_data : JSONB
+  status : VARCHAR(20)
+  priority : INTEGER
+  scheduled_for : TIMESTAMP
+  executed_at : TIMESTAMP
+  result_data : JSONB
+  error_message : TEXT
+  created_at : TIMESTAMP
+}
+
+entity "scenarios" as scenarios {
+  * id : UUID <<PK>>
+  --
+  * home_id : UUID <<FK>>
+  * created_by : UUID <<FK>>
+  name : VARCHAR(255)
+  description : TEXT
+  trigger_type : VARCHAR(50)
+  trigger_condition : JSONB
+  is_active : BOOLEAN
+  is_recurring : BOOLEAN
+  schedule_cron : VARCHAR(100)
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "scenario_actions" as scenario_actions {
+  * id : UUID <<PK>>
+  --
+  * scenario_id : UUID <<FK>>
+  * device_id : UUID <<FK>>
+  action_type : VARCHAR(50)
+  action_data : JSONB
+  delay_seconds : INTEGER
+  execution_order : INTEGER
+  created_at : TIMESTAMP
+}
+
+entity "scenario_executions" as scenario_executions {
+  * id : UUID <<PK>>
+  --
+  * scenario_id : UUID <<FK>>
+  trigger_source : VARCHAR(50)
+  trigger_data : JSONB
+  status : VARCHAR(20)
+  started_at : TIMESTAMP
+  completed_at : TIMESTAMP
+  error_message : TEXT
+  created_at : TIMESTAMP
+}
+
+
+entity "device_events" as device_events {
+  * id : BIGSERIAL <<PK>>
+  --
+  * device_id : UUID <<FK>>
+  event_type : VARCHAR(100)
+  event_data : JSONB
+  severity : VARCHAR(20)
+  acknowledged : BOOLEAN
+  acknowledged_by : UUID <<FK>>
+  acknowledged_at : TIMESTAMP
+  created_at : TIMESTAMP
+}
+
+entity "notifications" as notifications {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  title : VARCHAR(255)
+  message : TEXT
+  notification_type : VARCHAR(50)
+  is_read : BOOLEAN
+  read_at : TIMESTAMP
+  metadata : JSONB
+  created_at : TIMESTAMP
+}
+
+entity "alerts" as alerts {
+  * id : UUID <<PK>>
+  --
+  * device_id : UUID <<FK>>
+  alert_type : VARCHAR(100)
+  alert_condition : JSONB
+  severity : VARCHAR(20)
+  message : TEXT
+  is_active : BOOLEAN
+  triggered_at : TIMESTAMP
+  resolved_at : TIMESTAMP
+  resolved_by : UUID <<FK>>
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "roles" as roles {
+  * id : UUID <<PK>>
+  --
+  name : VARCHAR(50) <<UNIQUE>>
+  description : TEXT
+  is_system_role : BOOLEAN
+  created_at : TIMESTAMP
+}
+
+entity "permissions" as permissions {
+  * id : UUID <<PK>>
+  --
+  resource : VARCHAR(100)
+  action : VARCHAR(50)
+  description : TEXT
+  created_at : TIMESTAMP
+}
+
+entity "role_permissions" as role_permissions {
+  * id : UUID <<PK>>
+  --
+  * role_id : UUID <<FK>>
+  * permission_id : UUID <<FK>>
+  created_at : TIMESTAMP
+}
+
+entity "user_device_permissions" as user_device_permissions {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  * device_id : UUID <<FK>>
+  can_control : BOOLEAN
+  can_view : BOOLEAN
+  can_configure : BOOLEAN
+  can_invite : BOOLEAN
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "device_configurations" as device_configurations {
+  * id : UUID <<PK>>
+  --
+  * device_id : UUID <<FK>>
+  config_key : VARCHAR(100)
+  config_value : JSONB
+  is_default : BOOLEAN
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "home_settings" as home_settings {
+  * id : UUID <<PK>>
+  --
+  * home_id : UUID <<FK>>
+  setting_key : VARCHAR(100)
+  setting_value : JSONB
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "user_preferences" as user_preferences {
+  * id : UUID <<PK>>
+  --
+  * user_id : UUID <<FK>>
+  preference_key : VARCHAR(100)
+  preference_value : JSONB
+  created_at : TIMESTAMP
+  updated_at : TIMESTAMP
+}
+
+entity "protocols" as protocols {
+  * id : UUID <<PK>>
+  --
+  name : VARCHAR(50) <<UNIQUE>>
+  description : TEXT
+  default_port : INTEGER
+  is_secure : BOOLEAN
+  authentication_type : VARCHAR(50)
+  created_at : TIMESTAMP
+}
+
+entity "device_protocol_mappings" as device_protocol_mappings {
+  * id : UUID <<PK>>
+  --
+  * device_type_id : UUID <<FK>>
+  * protocol_id : UUID <<FK>>
+  default_settings : JSONB
+  created_at : TIMESTAMP
+}
+
+' Связи пользователей и домов
+users ||--o{ user_homes : "имеет доступ к"
+homes ||--o{ user_homes : "имеет пользователей"
+users ||--o{ user_homes : "пригласил"
+users ||--o{ user_homes : "принадлежит"
+homes ||--o{ devices : "содержит устройства"
+homes ||--o{ scenarios : "имеет сценарии"
+
+' Связи устройств
+device_categories ||--o{ device_types : "включает типы"
+device_types ||--o{ devices : "имеет экземпляры"
+devices ||--o{ device_connections : "имеет подключения"
+devices ||--o{ device_states : "имеет состояния"
+devices ||--o{ device_state_history : "имеет историю состояний"
+devices ||--o{ device_metrics : "имеет метрики"
+devices ||--o{ device_commands : "получает команды"
+devices ||--o{ scenario_actions : "используется в действиях"
+devices ||--o{ device_events : "генерирует события"
+devices ||--o{ alerts : "имеет алерты"
+devices ||--o{ device_configurations : "имеет конфигурации"
+
+' Связи команд и сценариев
+users ||--o{ device_commands : "отправляет команды"
+scenarios ||--o{ scenario_actions : "содержит действия"
+scenarios ||--o{ scenario_executions : "имеет выполнения"
+users ||--o{ scenarios : "создает сценарии"
+
+' Связи уведомлений и событий
+users ||--o{ notifications : "получает уведомления"
+users ||--o{ device_events : "подтверждает события"
+users ||--o{ alerts : "разрешает алерты"
+
+' Связи ролей и разрешений
+roles ||--o{ role_permissions : "имеет разрешения"
+permissions ||--o{ role_permissions : "назначается ролям"
+users ||--o{ user_device_permissions : "имеет права на устройства"
+devices ||--o{ user_device_permissions : "имеет права пользователей"
+
+' Связи настроек
+homes ||--o{ home_settings : "имеет настройки"
+users ||--o{ user_preferences : "имеет предпочтения"
+
+' Связи протоколов
+protocols ||--o{ device_protocol_mappings : "используется типами устройств"
+device_types ||--o{ device_protocol_mappings : "поддерживает протоколы"
+
+' Составные индексы
+note on link
+  Индексы:
+  - devices(home_id, status)
+  - device_states(device_id, is_current)
+  - device_state_history(device_id, recorded_at)
+  - device_metrics(device_id, metric_name, recorded_at)
+  - device_commands(device_id, status, created_at)
+  - user_device_permissions(user_id, device_id)
+end note
+
+' Ограничения уникальности
+note on link
+  Уникальные ограничения:
+  - devices(unique_id)
+  - user_homes(user_id, home_id)
+  - device_states(device_id, is_current) WHERE is_current = true
+  - home_settings(home_id, setting_key)
+  - user_preferences(user_id, preference_key)
+end note
+
+' Внешние ключи с действиями
+note on link
+  Каскадные удаления:
+  - devices CASCADE -> device_connections, device_states, etc.
+  - homes CASCADE -> devices, scenarios
+  - users CASCADE -> user_homes, device_commands
+end note
+
+@enduml
