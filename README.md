@@ -59,7 +59,7 @@
 
 ### 5. Визуализация контекста системы — диаграмма С4
 
-[SmartHomeContext](docs/diagrams/SmartHomeContext.puml)
+[SmartHomeContext](apps/docs/diagrams/SmartHomeContext.puml)
 
 # Задание 2. Проектирование микросервисной архитектуры
 
@@ -67,19 +67,19 @@
 
 **Диаграмма контейнеров (Containers)**
 
-[SmartHomeContainer](docs/diagrams/SmartHomeContainer.puml)
+[SmartHomeContainer](apps/docs/diagrams/SmartHomeContainer.puml)
 
 **Диаграмма компонентов (Components)**
 
-[SmartHomeComponent](docs/diagrams/SmartHomeComponent.puml)
+[SmartHomeComponent](apps/docs/diagrams/SmartHomeComponent.puml)
 
 **Диаграмма кода (Code)**
 
-[SmartHomeCode](docs/diagrams/SmartHomeCode.puml)
+[SmartHomeCode](apps/docs/diagrams/SmartHomeCode.puml)
 
 # Задание 3. Разработка ER-диаграммы
 
-[SmartHomeER](docs/diagrams/SmartHomeER.puml)
+[SmartHomeER](apps/docs/diagrams/SmartHomeER.puml)
 
 # Задание 4. Создание и документирование API
 
@@ -89,7 +89,7 @@ REST API. Пользователя будет раздражать задерж�
 
 ### 2. Документация API
 
-[DevicesAPI](docs/openapi/devices.yaml)
+[DevicesAPI](apps/docs/openapi/devices.yaml)
 
 # Задание 5. Работа с docker и docker-compose
 
