@@ -1,0 +1,603 @@
+openapi: 3.0.3
+info:
+  title: Smart Home Device Management API
+  version: 1.0.0
+  description: API для управления устройствами умного дома
+
+paths:
+  /devices:
+    get:
+      tags:
+        - Devices
+      summary: Получить список устройств
+      description: Возвращает список всех устройств для текущего пользователя с фильтрацией и пагинацией
+      parameters:
+        - name: home_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Успешный ответ со списком устройств
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Device'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+              examples:
+                normal_response:
+                  summary: Стандартный ответ
+                  value:
+                    data:
+                      - id: "550e8400-e29b-41d4-a716-446655440000"
+                        home_id: "550e8400-e29b-41d4-a716-446655440001"
+                        device_type_id: "550e8400-e29b-41d4-a716-446655440002"
+                        name: "Умная лампа в гостиной"
+                        unique_id: "smart-bulb-living-room-001"
+                        location: "На стене у дивана"
+                        room: "Гостиная"
+                        firmware_version: "2.1.4"
+                        ip_address: "192.168.1.101"
+                        mac_address: "AA:BB:CC:DD:EE:FF"
+                        serial_number: "SN123456789"
+                        status: "active"
+                        is_online: true
+                        last_seen_at: "2024-01-15T14:30:45Z"
+                        metadata:
+                          color_range: "RGB"
+                          max_brightness: 100
+                        created_at: "2024-01-01T10:00:00Z"
+                        updated_at: "2024-01-15T14:30:45Z"
+                      - id: "550e8400-e29b-41d4-a716-446655440003"
+                        home_id: "550e8400-e29b-41d4-a716-446655440001"
+                        device_type_id: "550e8400-e29b-41d4-a716-446655440004"
+                        name: "Термостат в спальне"
+                        unique_id: "thermostat-bedroom-001"
+                        room: "Спальня"
+                        firmware_version: "1.5.2"
+                        status: "active"
+                        is_online: false
+                        last_seen_at: "2024-01-15T08:15:22Z"
+                        metadata:
+                          min_temperature: 10
+                          max_temperature: 35
+                        created_at: "2024-01-02T09:30:00Z"
+                        updated_at: "2024-01-15T08:15:22Z"
+                    pagination:
+                      total: 2
+                      page: 1
+                      limit: 20
+                      total_pages: 1
+                      has_next: false
+                      has_prev: false
+                empty_response:
+                  summary: Пустой список устройств
+                  value:
+                    data: []
+                    pagination:
+                      total: 0
+                      page: 1
+                      limit: 20
+                      total_pages: 0
+                      has_next: false
+                      has_prev: false
+        '400':
+          description: Неверные параметры запроса
+          content:
+            application/json:
+              examples:
+                invalid_uuid:
+                  summary: Неверный формат UUID
+                  value:
+                    error: "VALIDATION_ERROR"
+                    message: "Параметр home_id должен быть валидным UUID"
+                    details:
+                      field: "home_id"
+                      value: "invalid-uuid-format"
+                invalid_pagination:
+                  summary: Неверные параметры пагинации
+                  value:
+                    error: "VALIDATION_ERROR"
+                    message: "Параметр limit должен быть между 1 и 100"
+                    details:
+                      field: "limit"
+                      value: 150
+
+    post:
+      tags:
+        - Devices
+      summary: Добавить новое устройство
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - home_id
+                - device_type_id
+                - name
+                - unique_id
+            examples:
+              smart_bulb:
+                summary: Добавление умной лампы
+                value:
+                  home_id: "550e8400-e29b-41d4-a716-446655440001"
+                  device_type_id: "550e8400-e29b-41d4-a716-446655440002"
+                  name: "Умная лампа на кухне"
+                  unique_id: "smart-bulb-kitchen-001"
+                  location: "Над кухонным столом"
+                  room: "Кухня"
+                  ip_address: "192.168.1.102"
+                  mac_address: "11:22:33:44:55:66"
+                  serial_number: "SN987654321"
+                  metadata:
+                    color_temperature: "2700K-6500K"
+                    wattage: 9.5
+              thermostat:
+                summary: Добавление термостата
+                value:
+                  home_id: "550e8400-e29b-41d4-a716-446655440001"
+                  device_type_id: "550e8400-e29b-41d4-a716-446655440004"
+                  name: "Термостат в детской"
+                  unique_id: "thermostat-kidsroom-001"
+                  room: "Детская"
+                  metadata:
+                    measurement_accuracy: "±0.5°C"
+                    humidity_sensor: true
+      responses:
+        '201':
+          description: Устройство успешно добавлено
+          content:
+            application/json:
+              examples:
+                created_device:
+                  summary: Устройство создано
+                  value:
+                    id: "550e8400-e29b-41d4-a716-446655440010"
+                    home_id: "550e8400-e29b-41d4-a716-446655440001"
+                    device_type_id: "550e8400-e29b-41d4-a716-446655440002"
+                    name: "Умная лампа на кухне"
+                    unique_id: "smart-bulb-kitchen-001"
+                    location: "Над кухонным столом"
+                    room: "Кухня"
+                    firmware_version: null
+                    ip_address: "192.168.1.102"
+                    mac_address: "11:22:33:44:55:66"
+                    serial_number: "SN987654321"
+                    status: "active"
+                    is_online: false
+                    last_seen_at: null
+                    metadata:
+                      color_temperature: "2700K-6500K"
+                      wattage: 9.5
+                    created_at: "2024-01-15T15:45:30Z"
+                    updated_at: "2024-01-15T15:45:30Z"
+        '409':
+          description: Конфликт данных
+          content:
+            application/json:
+              examples:
+                duplicate_unique_id:
+                  summary: Уникальный ID уже существует
+                  value:
+                    error: "CONFLICT"
+                    message: "Устройство с unique_id 'smart-bulb-kitchen-001' уже существует"
+                    details:
+                      field: "unique_id"
+                      value: "smart-bulb-kitchen-001"
+                      existing_device_id: "550e8400-e29b-41d4-a716-446655440000"
+
+  /devices/{device_id}:
+    get:
+      tags:
+        - Devices
+      summary: Получить информацию об устройстве
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Успешный ответ с информацией об устройстве
+          content:
+            application/json:
+              examples:
+                device_with_details:
+                  summary: Устройство с детальной информацией
+                  value:
+                    device:
+                      id: "550e8400-e29b-41d4-a716-446655440000"
+                      home_id: "550e8400-e29b-41d4-a716-446655440001"
+                      device_type_id: "550e8400-e29b-41d4-a716-446655440002"
+                      name: "Умная лампа в гостиной"
+                      unique_id: "smart-bulb-living-room-001"
+                      location: "На стене у дивана"
+                      room: "Гостиная"
+                      firmware_version: "2.1.4"
+                      ip_address: "192.168.1.101"
+                      mac_address: "AA:BB:CC:DD:EE:FF"
+                      serial_number: "SN123456789"
+                      status: "active"
+                      is_online: true
+                      last_seen_at: "2024-01-15T14:30:45Z"
+                      metadata:
+                        color_range: "RGB"
+                        max_brightness: 100
+                      created_at: "2024-01-01T10:00:00Z"
+                      updated_at: "2024-01-15T14:30:45Z"
+                    current_state:
+                      id: "550e8400-e29b-41d4-a716-446655440100"
+                      device_id: "550e8400-e29b-41d4-a716-446655440000"
+                      state_data:
+                        power: "on"
+                        brightness: 75
+                        color: "#FF9900"
+                        color_temperature: 4000
+                      source: "manual"
+                      is_current: true
+                      recorded_at: "2024-01-15T14:30:45Z"
+                      created_at: "2024-01-15T14:30:45Z"
+                    connection_info:
+                      id: "550e8400-e29b-41d4-a716-446655440200"
+                      device_id: "550e8400-e29b-41d4-a716-446655440000"
+                      protocol: "mqtt"
+                      host: "192.168.1.101"
+                      port: 1883
+                      connection_status: "connected"
+                      connected_at: "2024-01-15T14:25:10Z"
+                      last_activity_at: "2024-01-15T14:30:45Z"
+                    recent_metrics:
+                      - id: 12345
+                        device_id: "550e8400-e29b-41d4-a716-446655440000"
+                        metric_name: "power_consumption"
+                        metric_value: 8.5
+                        unit: "W"
+                        recorded_at: "2024-01-15T14:30:00Z"
+                      - id: 12346
+                        device_id: "550e8400-e29b-41d4-a716-446655440000"
+                        metric_name: "uptime"
+                        metric_value: 86400
+                        unit: "seconds"
+                        recorded_at: "2024-01-15T14:30:00Z"
+        '404':
+          description: Устройство не найдено
+          content:
+            application/json:
+              examples:
+                not_found:
+                  summary: Устройство не существует
+                  value:
+                    error: "NOT_FOUND"
+                    message: "Устройство с ID '550e8400-e29b-41d4-a716-446655440999' не найдено"
+                    details:
+                      device_id: "550e8400-e29b-41d4-a716-446655440999"
+
+    patch:
+      tags:
+        - Devices
+      summary: Обновить информацию об устройстве
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            examples:
+              rename_device:
+                summary: Переименование устройства
+                value:
+                  name: "Умная лампа - основной свет"
+              update_location:
+                summary: Обновление местоположения
+                value:
+                  location: "На потолке в центре комнаты"
+                  room: "Гостиная"
+              update_status:
+                summary: Изменение статуса устройства
+                value:
+                  status: "maintenance"
+                  metadata:
+                    maintenance_reason: "Профилактическое обслуживание"
+                    scheduled_until: "2024-01-20T23:59:59Z"
+      responses:
+        '200':
+          description: Устройство успешно обновлено
+          content:
+            application/json:
+              examples:
+                updated_device:
+                  summary: Устройство обновлено
+                  value:
+                    id: "550e8400-e29b-41d4-a716-446655440000"
+                    home_id: "550e8400-e29b-41d4-a716-446655440001"
+                    device_type_id: "550e8400-e29b-41d4-a716-446655440002"
+                    name: "Умная лампа - основной свет"
+                    unique_id: "smart-bulb-living-room-001"
+                    location: "На потолке в центре комнаты"
+                    room: "Гостиная"
+                    firmware_version: "2.1.4"
+                    ip_address: "192.168.1.101"
+                    mac_address: "AA:BB:CC:DD:EE:FF"
+                    serial_number: "SN123456789"
+                    status: "maintenance"
+                    is_online: true
+                    last_seen_at: "2024-01-15T14:30:45Z"
+                    metadata:
+                      color_range: "RGB"
+                      max_brightness: 100
+                      maintenance_reason: "Профилактическое обслуживание"
+                      scheduled_until: "2024-01-20T23:59:59Z"
+                    created_at: "2024-01-01T10:00:00Z"
+                    updated_at: "2024-01-15T15:50:00Z"
+
+  /devices/{device_id}/commands:
+    post:
+      tags:
+        - Devices
+        - Commands
+      summary: Отправить команду устройству
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            examples:
+              turn_on_light:
+                summary: Включить свет
+                value:
+                  command_type: "turn_on"
+                  priority: 3
+              set_temperature:
+                summary: Установить температуру
+                value:
+                  command_type: "set_temperature"
+                  command_data:
+                    temperature: 22.5
+                    mode: "heat"
+                  priority: 5
+              change_light_color:
+                summary: Изменить цвет и яркость
+                value:
+                  command_type: "set_color"
+                  command_data:
+                    color: "#3498db"
+                    brightness: 80
+                    transition: 2
+                  priority: 4
+              scheduled_command:
+                summary: Запланированная команда
+                value:
+                  command_type: "turn_off"
+                  priority: 6
+                  scheduled_for: "2024-01-15T23:00:00Z"
+      responses:
+        '202':
+          description: Команда принята в обработку
+          content:
+            application/json:
+              examples:
+                command_accepted:
+                  summary: Команда принята
+                  value:
+                    command_id: "550e8400-e29b-41d4-a716-446655440300"
+                    status: "pending"
+                    message: "Команда принята и поставлена в очередь на выполнение"
+                    estimated_execution: "2024-01-15T14:31:00Z"
+                scheduled_command_accepted:
+                  summary: Запланированная команда принята
+                  value:
+                    command_id: "550e8400-e29b-41d4-a716-446655440301"
+                    status: "scheduled"
+                    message: "Команда запланирована на 2024-01-15T23:00:00Z"
+                    scheduled_for: "2024-01-15T23:00:00Z"
+        '409':
+          description: Устройство недоступно
+          content:
+            application/json:
+              examples:
+                device_offline:
+                  summary: Устройство не в сети
+                  value:
+                    error: "DEVICE_OFFLINE"
+                    message: "Устройство 'Умная лампа в гостиной' не в сети"
+                    details:
+                      device_id: "550e8400-e29b-41d4-a716-446655440000"
+                      device_name: "Умная лампа в гостиной"
+                      last_seen_at: "2024-01-15T08:15:22Z"
+
+  /devices/{device_id}/states:
+    get:
+      tags:
+        - Devices
+      summary: Получить историю состояний устройства
+      parameters:
+        - name: device_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Успешный ответ с историей состояний
+          content:
+            application/json:
+              examples:
+                state_history:
+                  summary: История состояний устройства
+                  value:
+                    device_id: "550e8400-e29b-41d4-a716-446655440000"
+                    device_name: "Умная лампа в гостиной"
+                    states:
+                      - id: "550e8400-e29b-41d4-a716-446655440110"
+                        device_id: "550e8400-e29b-41d4-a716-446655440000"
+                        state_data:
+                          power: "off"
+                          brightness: 0
+                        source: "manual"
+                        is_current: false
+                        recorded_at: "2024-01-15T08:00:00Z"
+                        created_at: "2024-01-15T08:00:00Z"
+                      - id: "550e8400-e29b-41d4-a716-446655440111"
+                        device_id: "550e8400-e29b-41d4-a716-446655440000"
+                        state_data:
+                          power: "on"
+                          brightness: 50
+                          color: "#FFFFFF"
+                        source: "schedule"
+                        is_current: false
+                        recorded_at: "2024-01-15T18:00:00Z"
+                        created_at: "2024-01-15T18:00:00Z"
+                      - id: "550e8400-e29b-41d4-a716-446655440112"
+                        device_id: "550e8400-e29b-41d4-a716-446655440000"
+                        state_data:
+                          power: "on"
+                          brightness: 75
+                          color: "#FF9900"
+                          color_temperature: 4000
+                        source: "manual"
+                        is_current: true
+                        recorded_at: "2024-01-15T20:30:00Z"
+                        created_at: "2024-01-15T20:30:00Z"
+                thermostat_state_history:
+                  summary: История состояний термостата
+                  value:
+                    device_id: "550e8400-e29b-41d4-a716-446655440003"
+                    device_name: "Термостат в спальне"
+                    states:
+                      - id: "550e8400-e29b-41d4-a716-446655440120"
+                        device_id: "550e8400-e29b-41d4-a716-446655440003"
+                        state_data:
+                          temperature: 21.5
+                          target_temperature: 22
+                          mode: "heat"
+                          humidity: 45
+                          fan_speed: "auto"
+                        source: "manual"
+                        is_current: false
+                        recorded_at: "2024-01-15T10:00:00Z"
+                        created_at: "2024-01-15T10:00:00Z"
+                      - id: "550e8400-e29b-41d4-a716-446655440121"
+                        device_id: "550e8400-e29b-41d4-a716-446655440003"
+                        state_data:
+                          temperature: 22.0
+                          target_temperature: 21
+                          mode: "cool"
+                          humidity: 43
+                          fan_speed: "low"
+                        source: "schedule"
+                        is_current: false
+                        recorded_at: "2024-01-15T14:00:00Z"
+                        created_at: "2024-01-15T14:00:00Z"
+
+components:
+  schemas:
+    Device:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        unique_id:
+          type: string
+        is_online:
+          type: boolean
+
+    DeviceState:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        device_id:
+          type: string
+          format: uuid
+        state_data:
+          type: object
+        source:
+          type: string
+        is_current:
+          type: boolean
+        recorded_at:
+          type: string
+          format: date-time
+
+    DeviceMetric:
+      type: object
+      properties:
+        id:
+          type: integer
+        device_id:
+          type: string
+          format: uuid
+        metric_name:
+          type: string
+        metric_value:
+          type: number
+        unit:
+          type: string
+        recorded_at:
+          type: string
+          format: date-time
+
+    DeviceConnection:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        device_id:
+          type: string
+          format: uuid
+        protocol:
+          type: string
+        host:
+          type: string
+        connection_status:
+          type: string
+        connected_at:
+          type: string
+          format: date-time
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        total_pages:
+          type: integer
+        has_next:
+          type: boolean
